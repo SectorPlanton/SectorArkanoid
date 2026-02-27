@@ -892,6 +892,11 @@ canvas {
     <!-- Timer bar (Blitz mode) -->
     <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
 
+    <!-- Level progress bar (Classic mode) -->
+    <div id="level-prog-wrap" style="width:100%;max-width:820px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;">
+      <div id="level-prog" style="height:100%;background:linear-gradient(90deg,var(--g),var(--b));border-radius:2px;width:1%;transition:width 0.5s ease;"></div>
+    </div>
+
     <!-- Canvas -->
     <div id="canvas-wrap">
       <canvas id="gameCanvas"></canvas>
@@ -923,13 +928,13 @@ canvas {
      GAME OVER
 ═══════════════════════════════════════════ -->
 <div id="screen-gameover" class="screen screen-menu-type">
-  <div style="width:100%;max-width:400px;margin:auto;padding:16px 0;">
+  <div style="width:100%;max-width:440px;margin:auto;padding:16px 0;">
   <div class="panel panel-md stagger">
-    <div style="text-align:center;font-family:var(--font-head);font-size:clamp(20px,5vw,30px);font-weight:900;color:var(--r);letter-spacing:0.15em;text-shadow:var(--glow-r);animation:pulse 1.2s infinite;margin-bottom:8px;">
+    <div style="text-align:center;font-family:var(--font-head);font-size:clamp(20px,5vw,30px);font-weight:900;color:var(--r);letter-spacing:0.15em;text-shadow:var(--glow-r);animation:pulse 1.2s infinite;margin-bottom:6px;">
       GAME OVER
     </div>
-    <div style="text-align:center;font-size:10px;color:var(--text2);letter-spacing:0.15em;margin-bottom:16px;" id="go-mode-lbl">CLASSIC · NORMAL</div>
-    <div style="text-align:center;margin-bottom:16px;">
+    <div style="text-align:center;font-size:10px;color:var(--text2);letter-spacing:0.15em;margin-bottom:12px;" id="go-mode-lbl">CLASSIC · NORMAL</div>
+    <div style="text-align:center;margin-bottom:12px;">
       <div class="result-score-big" id="go-score">0</div>
       <div class="new-record hidden" id="go-record">✦ NEW RECORD ✦</div>
     </div>
@@ -939,13 +944,35 @@ canvas {
       <div class="stat-box"><div class="sval" id="gs-time">0:00</div><div class="slbl">TIME PLAYED</div></div>
       <div class="stat-box"><div class="sval" id="gs-pu">0</div><div class="slbl">POWER-UPS</div></div>
     </div>
+
+    <!-- Name entry — shown only if score qualifies for top 10 -->
+    <div id="go-name-section" class="hidden">
+      <div class="divider"></div>
+      <div class="section-label">🏆 Enter Your Name</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="go-name-input" type="text" maxlength="12" placeholder="YOUR NAME"
+          style="flex:1;background:#0a1520;border:1px solid var(--g);border-radius:6px;
+                 color:var(--g);font-family:var(--font-head);font-size:14px;
+                 padding:10px 12px;letter-spacing:0.08em;outline:none;
+                 text-transform:uppercase;min-height:44px;"/>
+        <button class="btn btn-primary" id="btn-save-score" style="width:auto;padding:10px 18px;font-size:12px;">
+          ✓ SAVE
+        </button>
+      </div>
+    </div>
+
+    <!-- Top 10 leaderboard inline -->
+    <div class="divider"></div>
+    <div class="section-label">Top 10</div>
+    <div id="go-lb-rows" style="display:flex;flex-direction:column;gap:5px;"></div>
+
     <div class="divider"></div>
     <div class="btn-group">
       <button class="btn btn-primary" id="btn-restart-go">↺ PLAY AGAIN</button>
       <button class="btn btn-ghost" id="btn-menu-go">⌂ MAIN MENU</button>
     </div>
   </div>
-  </div><!-- /centering wrapper -->
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -968,13 +995,33 @@ canvas {
       <div class="stat-box"><div class="sval" id="ws-time">0:00</div><div class="slbl">TIME</div></div>
       <div class="stat-box"><div class="sval" id="ws-pu">0</div><div class="slbl">POWER-UPS</div></div>
     </div>
+
+    <div id="win-name-section" class="hidden">
+      <div class="divider"></div>
+      <div class="section-label">🏆 Enter Your Name</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="win-name-input" type="text" maxlength="12" placeholder="YOUR NAME"
+          style="flex:1;background:#0a1520;border:1px solid var(--g);border-radius:6px;
+                 color:var(--g);font-family:var(--font-head);font-size:14px;
+                 padding:10px 12px;letter-spacing:0.08em;outline:none;
+                 text-transform:uppercase;min-height:44px;"/>
+        <button class="btn btn-primary" id="btn-save-score-win" style="width:auto;padding:10px 18px;font-size:12px;">
+          ✓ SAVE
+        </button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-label">Top 10</div>
+    <div id="win-lb-rows" style="display:flex;flex-direction:column;gap:5px;"></div>
+
     <div class="divider"></div>
     <div class="btn-group">
       <button class="btn btn-primary" id="btn-restart-win">↺ PLAY AGAIN</button>
       <button class="btn btn-ghost" id="btn-menu-win">⌂ MAIN MENU</button>
     </div>
   </div>
-  </div><!-- /centering wrapper -->
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -1001,27 +1048,37 @@ function saveCfg() {
 }
 
 /* ════════════════════════════════════════════
-   LEADERBOARD
+   LEADERBOARD — Top 10 with player names
 ════════════════════════════════════════════ */
 function getLB(mode) {
   try { return JSON.parse(localStorage.getItem('sp_lb_'+mode) || '[]'); } catch(e){ return []; }
 }
 function saveLB(mode, arr) {
-  try { localStorage.setItem('sp_lb_'+mode, JSON.stringify(arr.slice(0,5))); } catch(e){}
+  try { localStorage.setItem('sp_lb_'+mode, JSON.stringify(arr.slice(0,10))); } catch(e){}
 }
-function addScore(mode, score, level, time) {
+// Returns position (0-based) if score qualifies for top 10, else -1
+function qualifiesTop10(mode, score) {
+  if (score <= 0) return -1;
   const arr = getLB(mode);
-  arr.push({ score, level, time, date: new Date().toLocaleDateString('ro') });
+  if (arr.length < 10) return arr.length; // slot available
+  const worst = arr[arr.length-1].score;
+  if (score > worst) return arr.length-1;
+  return -1;
+}
+function commitScore(mode, score, level, time, name) {
+  const arr = getLB(mode);
+  const entry = { score, level, time, name: (name||'UNKNOWN').toUpperCase().slice(0,12), date: new Date().toLocaleDateString('ro') };
+  arr.push(entry);
   arr.sort((a,b) => b.score - a.score);
   saveLB(mode, arr);
-  return arr[0].score === score && arr.indexOf(arr.find(x=>x.score===score && x.level===level)) === 0;
+  return arr.findIndex(e => e === entry);
 }
 function getHiScore(mode) {
   const arr = getLB(mode);
   return arr.length ? arr[0].score : 0;
 }
 function getAllHiScore() {
-  return Math.max(...['classic','blitz','survival'].map(getHiScore));
+  return Math.max(0, ...['classic','blitz','survival'].map(getHiScore));
 }
 
 /* ════════════════════════════════════════════
@@ -1119,80 +1176,237 @@ animBgParticles();
 const canvas  = document.getElementById('gameCanvas');
 const ctx     = canvas.getContext('2d');
 
-// Canvas is sized via CSS; we need logical px
 const CW = 800, CH = 520;
 canvas.width  = CW;
 canvas.height = CH;
 
-// Game config by difficulty
+// Difficulty configs — speeds are noticeably faster
 const DIFF = {
-  easy:   { speed:3.8, ballR:8, padW:150, padSpeed:9,  brickHitMult:0, puChance:0.32 },
-  normal: { speed:4.5, ballR:7, padW:120, padSpeed:8,  brickHitMult:0, puChance:0.22 },
-  hard:   { speed:5.5, ballR:6, padW:90,  padSpeed:10, brickHitMult:1, puChance:0.14 }
+  easy:   { speed:7.0,  ballR:8, padW:150, padSpeed:10, puChance:0.32 },
+  normal: { speed:8.5,  ballR:7, padW:120, padSpeed:9,  puChance:0.22 },
+  hard:   { speed:10.5, ballR:6, padW:90,  padSpeed:11, puChance:0.14 }
 };
-const LEVEL_MAX_CLASSIC  = 8;
+const LEVEL_MAX = 100;
 const BLITZ_SECONDS = 120;
 
-// Mode descriptions
 const MODE_DESC = {
-  classic:  'Break all bricks to advance levels. Classic Arkanoid.',
+  classic:  'Break all bricks to advance. 100 levels of increasing challenge.',
   blitz:    '2 minutes on the clock — score as much as possible!',
   survival: 'No lives lost — but bricks respawn! Survive forever.'
 };
 
-// Brick colours per row
 const ROW_COLORS = ['#ff2d55','#ff9f0a','#ffd60a','#30d158','#00d4ff','#0a84ff','#bf5af2'];
 
 // State
 let STATE = {
   mode:'classic', diff:'normal', score:0, level:1, lives:3,
   running:false, paused:false, raf:0,
-  bricksDestroyed:0, puCaught:0, startTime:0, blitzLeft:BLITZ_SECONDS*1000
+  bricksDestroyed:0, puCaught:0, startTime:0, blitzLeft:BLITZ_SECONDS*1000,
+  pendingScore:null  // { score, level, elapsed } waiting for name input
 };
 
-// Entities
 let PAD, balls, bricks, powerUps, particles, trailPoints;
-let activeEffects = []; // { type, timer }
+let activeEffects = [];
 
 /* ──── PADDLE ──── */
 function mkPad() {
   const d = DIFF[STATE.diff];
-  return {
-    w: d.padW, h: 13,
-    x: CW/2 - d.padW/2,
-    y: CH - 30,
-    speed: d.padSpeed, dx: 0,
-    origW: d.padW
-  };
+  return { w:d.padW, h:13, x:CW/2-d.padW/2, y:CH-30, speed:d.padSpeed, dx:0, origW:d.padW };
 }
 
 /* ──── BALL ──── */
 function mkBall(x, y, angle) {
   const d = DIFF[STATE.diff];
-  const spd = d.speed + (STATE.level-1)*0.28;
+  // Speed ramps: +0.15 per level, capped at base * 2.0
+  const rawSpd = d.speed + (STATE.level - 1) * 0.15;
+  const spd = Math.min(rawSpd, d.speed * 2.0);
   const a = angle !== undefined ? angle : -Math.PI/2 + (Math.random()-0.5)*0.55;
   return { x, y, dx: spd*Math.cos(a), dy: spd*Math.sin(a), r: d.ballR, trail: [] };
 }
 
-/* ──── BRICKS ──── */
-const BCOLS = 10, BROWS = 5;
-const BW = 68, BH = 18, BP = 7;
-const B_TOP  = 48;
+/* ════════════════════════════════════════════
+   100-LEVEL BRICK PATTERN SYSTEM
+════════════════════════════════════════════ */
+const BCOLS = 10, BROWS = 6;
+const BW = 68, BH = 16, BP = 6;
+const B_TOP  = 44;
 const B_LEFT = (CW - BCOLS*(BW+BP) + BP) / 2;
 
+// Helper: create a full grid initialized to 0 hits (empty)
+function emptyGrid() {
+  return Array.from({length:BROWS}, ()=>new Array(BCOLS).fill(0));
+}
+
+// Returns grid[r][c] = hits (0=empty, 1/2/3)
+function getLevelPattern(lv) {
+  const g = emptyGrid();
+
+  // ── Difficulty progression ──
+  // Phase 1: lv 1-20   → 1-hit bricks, simple patterns
+  // Phase 2: lv 21-50  → mix of 1 and 2-hit bricks
+  // Phase 3: lv 51-80  → 2-hit dominant, some 3-hit
+  // Phase 4: lv 81-100 → 3-hit bricks heavily featured
+
+  const maxHits = lv <= 20 ? 1 :
+                  lv <= 50 ? 2 :
+                  lv <= 80 ? 3 : 3;
+
+  function h(lv) {
+    // Returns a hit count (1, 2, or 3) based on level phase
+    const r = Math.random();
+    if (lv <= 10) return 1;
+    if (lv <= 20) return r < 0.85 ? 1 : 2;
+    if (lv <= 30) return r < 0.6  ? 1 : 2;
+    if (lv <= 40) return r < 0.35 ? 1 : 2;
+    if (lv <= 50) return r < 0.15 ? 1 : 2;
+    if (lv <= 60) return r < 0.35 ? 2 : r < 0.7 ? 3 : 1;
+    if (lv <= 70) return r < 0.2  ? 2 : 3;
+    if (lv <= 80) return r < 0.1  ? 2 : 3;
+    if (lv <= 90) return 3;        // all 3-hit from level 81
+    return 3;                       // levels 91-100: all armored
+  }
+
+  // 20 unique pattern templates, cycling with offset
+  const patternId = ((lv - 1) % 20) + 1;
+  const seed = Math.floor((lv - 1) / 20); // 0-4, adds variation
+
+  switch(patternId) {
+    case 1: // Full grid
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) g[r][c]=h(lv);
+      break;
+    case 2: // Checkerboard
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) if((r+c)%2===0) g[r][c]=h(lv);
+      break;
+    case 3: // Diamond / inverted diamond
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) {
+        const d=Math.abs(r-2.5)+Math.abs(c-4.5);
+        if(d<=4+seed) g[r][c]=h(lv);
+      }
+      break;
+    case 4: // X cross
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) {
+        const dr=Math.abs(r-(BROWS-1)/2), dc=Math.abs(c-(BCOLS-1)/2);
+        if(dr===dc || dr+dc<=1+seed) g[r][c]=h(lv);
+      }
+      break;
+    case 5: // Stripes horizontal
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++)
+        if(r%2===seed%2) g[r][c]=h(lv); else if(r%2!==0) g[r][c]=Math.min(1,h(lv));
+      break;
+    case 6: // Stripes vertical
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++)
+        if(c%2===0) g[r][c]=h(lv);
+      break;
+    case 7: // Arrow pointing up
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) {
+        const mx=Math.abs(c-4.5); const tri=r+mx<6+seed;
+        if(tri) g[r][c]=h(lv);
+      }
+      break;
+    case 8: // Hollow rectangle
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) {
+        if(r===0||r===BROWS-1||c===0||c===BCOLS-1) g[r][c]=h(lv);
+        else if(r===1||r===BROWS-2||c===1||c===BCOLS-2) g[r][c]=Math.min(maxHits,h(lv));
+      }
+      break;
+    case 9: // Pyramid
+      for(let r=0;r<BROWS;r++) {
+        const margin = BROWS-1-r;
+        for(let c=margin;c<BCOLS-margin;c++) g[r][c]=h(lv);
+      }
+      break;
+    case 10: // Inverted pyramid
+      for(let r=0;r<BROWS;r++) {
+        for(let c=r;c<BCOLS-r;c++) g[r][c]=h(lv);
+      }
+      break;
+    case 11: // Two columns fortress
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) {
+        if(c<3||c>6) g[r][c]=h(lv);
+        else if(r===0||r===BROWS-1) g[r][c]=h(lv);
+      }
+      break;
+    case 12: // Scattered random (seeded)
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) {
+        const pseudo = (r*7+c*13+lv*3)%10;
+        if(pseudo<7) g[r][c]=h(lv);
+      }
+      break;
+    case 13: // Star / plus cross
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) {
+        if(r===Math.floor(BROWS/2)||c===Math.floor(BCOLS/2)) g[r][c]=h(lv);
+        if(Math.abs(r-Math.floor(BROWS/2))===Math.abs(c-Math.floor(BCOLS/2))&&Math.abs(r-2)<=2) g[r][c]=h(lv);
+      }
+      break;
+    case 14: // Side walls + top
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) {
+        if(r===0||c===0||c===BCOLS-1) g[r][c]=h(lv);
+      }
+      break;
+    case 15: // Wave pattern
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) {
+        const wave = Math.floor(Math.sin(c/2.5)*1.5+2);
+        if(r<=wave) g[r][c]=h(lv);
+      }
+      break;
+    case 16: // Zigzag
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) {
+        const zz=(r%2===0)?c:(BCOLS-1-c);
+        if(Math.abs(zz-((lv*2)%BCOLS))<3+seed) g[r][c]=h(lv);
+      }
+      break;
+    case 17: // Center blob
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) {
+        const d=Math.sqrt((r-2.5)**2+(c-4.5)**2);
+        if(d<3+seed*0.4) g[r][c]=Math.min(maxHits,Math.ceil((4-d)));
+      }
+      break;
+    case 18: // Two islands
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) {
+        if((c<4&&r>=1&&r<=BROWS-2)||(c>5&&r>=1&&r<=BROWS-2)) g[r][c]=h(lv);
+      }
+      break;
+    case 19: // Spiral-ish
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) {
+        const mx=Math.min(r,c,BROWS-1-r,BCOLS-1-c);
+        if(mx%2===0) g[r][c]=h(lv);
+      }
+      break;
+    case 20: // Dense with armored core
+      for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++) {
+        g[r][c] = (r>=1&&r<=BROWS-2&&c>=2&&c<=BCOLS-3) ? Math.min(maxHits,3) : h(lv);
+      }
+      break;
+  }
+
+  // Every 10 levels: add bonus armor row at top
+  if (lv % 10 === 0) {
+    for(let c=0;c<BCOLS;c++) g[0][c] = Math.min(3, (g[0][c]||1)+1);
+  }
+
+  // Ensure at least 15 bricks on screen
+  const total = g.flat().filter(v=>v>0).length;
+  if (total < 15) {
+    for(let r=0;r<BROWS&&g.flat().filter(v=>v>0).length<20;r++)
+      for(let c=0;c<BCOLS&&g.flat().filter(v=>v>0).length<20;c++)
+        if(!g[r][c]) g[r][c]=1;
+  }
+
+  return g;
+}
+
 function mkBricks() {
-  const d = DIFF[STATE.diff];
+  const grid = getLevelPattern(STATE.level);
   const arr = [];
-  for (let r=0; r<BROWS; r++) {
-    for (let c=0; c<BCOLS; c++) {
-      const extra = (r < 2 && STATE.level >= 3) ? d.brickHitMult : 0;
-      const hits  = 1 + extra + (STATE.level >= 5 && r === 0 ? 1 : 0);
+  for(let r=0;r<BROWS;r++) {
+    for(let c=0;c<BCOLS;c++) {
+      const hits = grid[r][c];
+      if(hits <= 0) continue;
       arr.push({
         c, r,
         x: B_LEFT + c*(BW+BP),
         y: B_TOP  + r*(BH+BP),
-        hits, maxHits: hits, alive: true,
-        flash: 0
+        hits, maxHits: hits, alive: true, flash: 0
       });
     }
   }
@@ -1254,17 +1468,22 @@ function spawnBall() {
    HUD
 ════════════════════════════════════════════ */
 function updateHUD() {
-  document.getElementById('h-score').textContent = STATE.score;
-  document.getElementById('h-hi').textContent    = getHiScore(STATE.mode);
-  document.getElementById('h-level').textContent = STATE.level;
+  document.getElementById('h-score').textContent = STATE.score.toLocaleString();
+  document.getElementById('h-hi').textContent    = getHiScore(STATE.mode).toLocaleString();
+  document.getElementById('h-level').textContent = `${STATE.level}/100`;
   const h = Math.max(0, STATE.lives);
   document.getElementById('h-lives').textContent = '♥'.repeat(h) + '♡'.repeat(Math.max(0,3-h));
   const el = document.getElementById('h-mode');
   el.textContent = STATE.mode.toUpperCase();
   el.className = 'hud-mode-badge' + (STATE.mode === 'blitz' ? ' blitz' : STATE.mode === 'survival' ? ' survival' : '');
   document.getElementById('h-diff').textContent = STATE.diff.toUpperCase();
-  // hi-badge on menu
-  document.getElementById('hi-badge').textContent = '★ HI ' + getAllHiScore();
+  document.getElementById('hi-badge').textContent = '★ HI ' + getAllHiScore().toLocaleString();
+
+  // Level progress bar
+  const prog = document.getElementById('level-prog');
+  if (prog) {
+    prog.style.width = ((STATE.level / 100) * 100).toFixed(1) + '%';
+  }
 
   // Timer bar
   const tbw = document.getElementById('timer-bar-wrap');
@@ -1304,30 +1523,44 @@ function drawBg() {
 }
 
 function drawBricks() {
+  // Brick colors: by hits remaining (not row) for clarity
+  // 1-hit: row color (vivid), 2-hit: steel blue, 3-hit: gold/armored
+  const HIT_COLORS = {
+    1: null,       // use row color
+    2: '#5ac8fa',  // steel blue — damaged armor
+    3: '#ffd60a',  // gold — full armor
+  };
+
   for (const b of bricks) {
     if (!b.alive) continue;
-    const col = ROW_COLORS[b.r % ROW_COLORS.length];
 
     ctx.save();
     if (b.flash > 0) {
-      ctx.globalAlpha = 0.6 + 0.4*Math.sin(b.flash*0.8);
+      ctx.globalAlpha = 0.55 + 0.45*Math.sin(b.flash*1.1);
       b.flash--;
     }
 
-    // Glow
-    ctx.shadowColor = col;
-    ctx.shadowBlur  = b.hits > 1 ? 8 : 4;
-
-    // Fill
-    const grd = ctx.createLinearGradient(b.x, b.y, b.x, b.y+BH);
-    if (b.hits < b.maxHits) {
-      // Damaged — dim
-      grd.addColorStop(0, col+'88');
-      grd.addColorStop(1, col+'33');
+    // Choose color based on maxHits (armor tier) tinted by damage
+    let baseCol;
+    if (b.maxHits === 3) {
+      // Gold armor: full=gold, 2hits=orange, 1hit=red-orange
+      baseCol = b.hits === 3 ? '#ffd60a' : b.hits === 2 ? '#ff9f0a' : '#ff6b35';
+    } else if (b.maxHits === 2) {
+      // Steel: full=blue, 1hit=dim blue
+      baseCol = b.hits === 2 ? '#5ac8fa' : '#2a7a9a';
     } else {
-      grd.addColorStop(0, col+'ee');
-      grd.addColorStop(1, col+'55');
+      // Normal 1-hit bricks: row colors
+      baseCol = ROW_COLORS[b.r % ROW_COLORS.length];
     }
+
+    // Glow intensity scales with hits
+    ctx.shadowColor = baseCol;
+    ctx.shadowBlur  = 4 + b.hits * 3;
+
+    const grd = ctx.createLinearGradient(b.x, b.y, b.x, b.y+BH);
+    const alpha = b.hits < b.maxHits ? 'cc' : 'ff';
+    grd.addColorStop(0, baseCol + alpha);
+    grd.addColorStop(1, baseCol + '55');
     ctx.fillStyle = grd;
     ctx.beginPath();
     ctx.roundRect(b.x, b.y, BW, BH, 3);
@@ -1335,19 +1568,34 @@ function drawBricks() {
     ctx.shadowBlur = 0;
 
     // Top shine
-    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
     ctx.fillRect(b.x+2, b.y+2, BW-4, 3);
 
-    // Crack if damaged
-    if (b.hits < b.maxHits) {
-      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-      ctx.lineWidth = 1.5;
+    // Hit indicators for armored bricks
+    if (b.maxHits >= 2) {
+      // Draw remaining-hits dots or number
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
       ctx.beginPath();
-      ctx.moveTo(b.x+BW*0.25, b.y+2);
-      ctx.lineTo(b.x+BW*0.45, b.y+BH-3);
-      ctx.moveTo(b.x+BW*0.55, b.y+3);
-      ctx.lineTo(b.x+BW*0.75, b.y+BH-2);
-      ctx.stroke();
+      ctx.roundRect(b.x+BW-18, b.y+2, 16, BH-4, 2);
+      ctx.fill();
+      ctx.fillStyle = b.hits === b.maxHits ? '#ffffff' : 'rgba(255,255,255,0.5)';
+      ctx.font = `bold ${BH-6}px Orbitron, monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(b.hits, b.x+BW-10, b.y+BH/2);
+      ctx.textAlign = 'left';
+
+      // Crack lines for damaged bricks
+      if (b.hits < b.maxHits) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(b.x+BW*0.2, b.y+2);
+        ctx.lineTo(b.x+BW*0.38, b.y+BH-2);
+        ctx.moveTo(b.x+BW*0.45, b.y+3);
+        ctx.lineTo(b.x+BW*0.55, b.y+BH-2);
+        ctx.stroke();
+      }
     }
 
     ctx.restore();
@@ -1497,7 +1745,16 @@ function updatePad(dt) {
     if (activeEffects[i].timer <= 0) {
       const t = activeEffects[i].type;
       activeEffects.splice(i, 1);
-      if (t === 'bigPaddle')  { PAD.w = PAD.origW; }
+      if (t === 'bigPaddle') { PAD.w = PAD.origW; }
+      if (t === 'slowBall') {
+        // Restore ball speed to what it should be at current level
+        const d = DIFF[STATE.diff];
+        const targetSpd = Math.min(d.speed + (STATE.level-1)*0.15, d.speed*2.0);
+        for (const b of balls) {
+          const s = Math.sqrt(b.dx*b.dx+b.dy*b.dy);
+          if (s > 0) { b.dx = b.dx/s*targetSpd; b.dy = b.dy/s*targetSpd; }
+        }
+      }
       updatePuStrip();
     }
   }
@@ -1603,7 +1860,7 @@ function updateBricks() {
   }
 
   if (bricks.every(b => !b.alive)) {
-    if (STATE.mode === 'classic' && STATE.level >= LEVEL_MAX_CLASSIC) {
+    if (STATE.mode === 'classic' && STATE.level >= LEVEL_MAX) {
       setTimeout(winGame, 400);
     } else {
       setTimeout(levelUp, 300);
@@ -1613,17 +1870,17 @@ function updateBricks() {
 
 function hitBrick(b, ball) {
   b.hits--;
-  b.flash = 12;
+  b.flash = 14;
   if (b.hits <= 0) {
     b.alive = false;
-    STATE.score += (10 + STATE.level*2) * (STATE.diff === 'hard' ? 2 : STATE.diff === 'easy' ? 1 : 1);
+    const mult = STATE.diff === 'hard' ? 2 : 1;
+    STATE.score += (10 + STATE.level * 2) * mult;
     STATE.bricksDestroyed++;
     updateHUD();
-    spawnParts(b.x+BW/2, b.y+BH/2, ROW_COLORS[b.r%ROW_COLORS.length], 14);
+    spawnParts(b.x+BW/2, b.y+BH/2, b.maxHits >= 3 ? '#ffd60a' : b.maxHits === 2 ? '#5ac8fa' : ROW_COLORS[b.r%ROW_COLORS.length], 14);
     SFX.brick();
     const d = DIFF[STATE.diff];
     if (Math.random() < d.puChance) spawnPU(b);
-    if (STATE.score > getHiScore(STATE.mode)) updateHUD();
   } else {
     SFX.hit();
   }
@@ -1666,14 +1923,23 @@ function applyPU(type) {
     case 'slowBall':
       for (const b of balls) {
         const s = Math.sqrt(b.dx*b.dx+b.dy*b.dy);
-        const ns = Math.max(2.5, s*0.65);
+        const ns = Math.max(3.5, s*0.55);
         b.dx = b.dx/s*ns; b.dy = b.dy/s*ns;
+        b._preSlowSpd = s; // remember original speed
       }
-      pushEffect('slowBall', 8000);
+      pushEffect('slowBall', 5000); // strictly 5 seconds max
       break;
     case 'extraLife':
-      STATE.lives = Math.min(STATE.lives+1, 5);
-      updateHUD();
+      if (STATE.lives < 3) {
+        STATE.lives = Math.min(STATE.lives + 1, 3);
+        updateHUD();
+      } else {
+        // Already at max — convert to bonus score instead
+        STATE.score += 500 + STATE.level * 10;
+        updateHUD();
+        showToast('+BONUS 💎', 'var(--y)', 1200);
+        return;
+      }
       break;
     case 'laserPad':
       pushEffect('laserPad', dur);
@@ -1756,18 +2022,34 @@ function levelUp() {
 function endGame() {
   STATE.running = false;
   cancelAnimationFrame(STATE.raf);
+  SFX.lose();
   const elapsed = Math.floor((performance.now()-STATE.startTime)/1000);
   const mm = String(Math.floor(elapsed/60)).padStart(2,'0');
   const ss = String(elapsed%60).padStart(2,'0');
-  const isNew = addScore(STATE.mode, STATE.score, STATE.level, elapsed);
+
   document.getElementById('go-score').textContent = STATE.score;
   document.getElementById('go-mode-lbl').textContent = STATE.mode.toUpperCase() + ' · ' + STATE.diff.toUpperCase();
   document.getElementById('gs-level').textContent  = STATE.level;
   document.getElementById('gs-bricks').textContent = STATE.bricksDestroyed;
   document.getElementById('gs-time').textContent   = mm+':'+ss;
   document.getElementById('gs-pu').textContent     = STATE.puCaught;
-  const rec = document.getElementById('go-record');
-  if (isNew && STATE.score > 0) { rec.classList.remove('hidden'); } else { rec.classList.add('hidden'); }
+
+  // Check if qualifies for top 10
+  const pos = qualifiesTop10(STATE.mode, STATE.score);
+  const nameSection = document.getElementById('go-name-section');
+  const recEl = document.getElementById('go-record');
+  if (pos >= 0) {
+    nameSection.classList.remove('hidden');
+    recEl.classList.remove('hidden');
+    document.getElementById('go-name-input').value = '';
+    document.getElementById('go-name-input').focus();
+    STATE.pendingScore = { score: STATE.score, level: STATE.level, elapsed, mode: STATE.mode };
+  } else {
+    nameSection.classList.add('hidden');
+    recEl.classList.add('hidden');
+    STATE.pendingScore = null;
+  }
+  renderResultLB('go-lb-rows', STATE.mode);
   showScreen('gameover');
 }
 
@@ -1779,16 +2061,57 @@ function winGame() {
   const elapsed = Math.floor((performance.now()-STATE.startTime)/1000);
   const mm = String(Math.floor(elapsed/60)).padStart(2,'0');
   const ss = String(elapsed%60).padStart(2,'0');
-  const isNew = addScore(STATE.mode, STATE.score, STATE.level, elapsed);
+
   document.getElementById('win-score').textContent = STATE.score;
   document.getElementById('win-mode-lbl').textContent = STATE.mode.toUpperCase() + ' · ' + STATE.diff.toUpperCase();
   document.getElementById('ws-level').textContent  = STATE.level;
   document.getElementById('ws-bricks').textContent = STATE.bricksDestroyed;
   document.getElementById('ws-time').textContent   = mm+':'+ss;
   document.getElementById('ws-pu').textContent     = STATE.puCaught;
-  const rec = document.getElementById('win-record');
-  if (isNew && STATE.score > 0) { rec.classList.remove('hidden'); } else { rec.classList.add('hidden'); }
+
+  const pos = qualifiesTop10(STATE.mode, STATE.score);
+  const nameSection = document.getElementById('win-name-section');
+  const recEl = document.getElementById('win-record');
+  if (pos >= 0) {
+    nameSection.classList.remove('hidden');
+    recEl.classList.remove('hidden');
+    document.getElementById('win-name-input').value = '';
+    document.getElementById('win-name-input').focus();
+    STATE.pendingScore = { score: STATE.score, level: STATE.level, elapsed, mode: STATE.mode };
+  } else {
+    nameSection.classList.add('hidden');
+    recEl.classList.add('hidden');
+    STATE.pendingScore = null;
+  }
+  renderResultLB('win-lb-rows', STATE.mode);
   showScreen('win');
+}
+
+function renderResultLB(containerId, mode) {
+  const el = document.getElementById(containerId);
+  const arr = getLB(mode);
+  el.innerHTML = '';
+  if (!arr.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text2);font-size:11px;padding:16px 0;">No scores yet — be the first!</div>';
+    return;
+  }
+  const medals = ['🥇','🥈','🥉','4','5','6','7','8','9','10'];
+  arr.forEach((s, i) => {
+    const mm = String(Math.floor((s.time||0)/60)).padStart(2,'0');
+    const ss = String((s.time||0)%60).padStart(2,'0');
+    const row = document.createElement('div');
+    row.className = 'score-row';
+    row.style.padding = '6px 10px';
+    row.style.minHeight = '36px';
+    const isNew = STATE.pendingScore && s.score === STATE.pendingScore.score && i === 0;
+    row.innerHTML = `
+      <span class="score-rank" style="font-size:13px;">${medals[i]||i+1}</span>
+      <span class="score-name" style="font-size:11px;">${s.name||'???'} <span style="color:var(--text2);font-size:9px;">Lv${s.level||1}</span></span>
+      <span class="score-val" style="font-size:12px;${isNew?'color:var(--g);':''}">${(s.score||0).toLocaleString()}</span>
+      <span class="score-meta" style="font-size:9px;">${mm}:${ss}</span>
+    `;
+    el.appendChild(row);
+  });
 }
 
 /* ════════════════════════════════════════════
@@ -2001,22 +2324,54 @@ function renderLB(mode) {
     rows.innerHTML = '<div style="text-align:center;color:var(--text2);font-size:12px;padding:40px 0;">No scores yet.<br>Play a game first!</div>';
     return;
   }
+  const medals = ['🥇','🥈','🥉','4','5','6','7','8','9','10'];
   arr.forEach((s,i) => {
-    const medals = ['🥇','🥈','🥉','④','⑤'];
     const row = document.createElement('div');
     row.className = 'score-row';
     const mm = String(Math.floor((s.time||0)/60)).padStart(2,'0');
     const ss_ = String((s.time||0)%60).padStart(2,'0');
     row.innerHTML = `
       <span class="score-rank">${medals[i]||i+1}</span>
-      <span class="score-name">LVL ${s.level||1}</span>
-      <span class="score-val">${s.score.toLocaleString()}</span>
+      <span class="score-name">${s.name||'???'} <span style="color:var(--text2);font-size:9px;">Lv${s.level||1}</span></span>
+      <span class="score-val">${(s.score||0).toLocaleString()}</span>
       <span class="score-meta">${mm}:${ss_}<br>${s.date||''}</span>
     `;
     if (i===0) row.querySelector('.score-val').classList.add('score-new');
     rows.appendChild(row);
   });
 }
+
+// Save score handlers
+function handleSaveScore(nameInputId, lbContainerId, restartBtnId) {
+  const input = document.getElementById(nameInputId);
+  const name = (input.value.trim() || 'UNKNOWN').toUpperCase().slice(0, 12);
+  if (STATE.pendingScore) {
+    const { score, level, elapsed, mode } = STATE.pendingScore;
+    commitScore(mode, score, level, elapsed, name);
+    STATE.pendingScore = null;
+    updateHiBadge();
+  }
+  // Hide name section
+  input.closest('[id$="-section"]') && input.closest('[id$="-section"]').classList.add('hidden');
+  // Re-render LB in result screen
+  renderResultLB(lbContainerId, STATE.mode);
+}
+
+document.getElementById('btn-save-score').addEventListener('click', () => {
+  handleSaveScore('go-name-input', 'go-lb-rows', 'btn-restart-go');
+});
+document.getElementById('go-name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-save-score').click();
+  e.stopPropagation(); // prevent game key handlers
+});
+
+document.getElementById('btn-save-score-win').addEventListener('click', () => {
+  handleSaveScore('win-name-input', 'win-lb-rows', 'btn-restart-win');
+});
+document.getElementById('win-name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-save-score-win').click();
+  e.stopPropagation();
+});
 
 document.getElementById('btn-clear-scores').addEventListener('click', () => {
   if (confirm('Clear all leaderboard scores?')) {
@@ -2085,17 +2440,23 @@ document.getElementById('btn-menu-pause').addEventListener('click', () => {
 // Result screens
 document.getElementById('btn-restart-go').addEventListener('click', () => {
   initAudio(); SFX.menu();
+  STATE.pendingScore = null;
   showScreen('game'); initGame(); startGameLoop();
 });
 document.getElementById('btn-menu-go').addEventListener('click', () => {
-  initAudio(); SFX.menu(); showScreen('menu'); updateHiBadge();
+  initAudio(); SFX.menu();
+  STATE.pendingScore = null;
+  showScreen('menu'); updateHiBadge();
 });
 document.getElementById('btn-restart-win').addEventListener('click', () => {
   initAudio(); SFX.menu();
+  STATE.pendingScore = null;
   showScreen('game'); initGame(); startGameLoop();
 });
 document.getElementById('btn-menu-win').addEventListener('click', () => {
-  initAudio(); SFX.menu(); showScreen('menu'); updateHiBadge();
+  initAudio(); SFX.menu();
+  STATE.pendingScore = null;
+  showScreen('menu'); updateHiBadge();
 });
 
 function updateHiBadge() {
@@ -2123,7 +2484,12 @@ canvas.addEventListener('click', e => {
 (function initialDraw() {
   STATE.diff = 'normal'; STATE.level = 1;
   PAD = mkPad(); bricks = mkBricks(); balls=[]; powerUps=[]; particles=[];
+  activeEffects = [];
   ctx.fillStyle = '#030608'; ctx.fillRect(0,0,CW,CH);
+  // Draw grid
+  ctx.strokeStyle = 'rgba(0,255,163,0.022)'; ctx.lineWidth = 1;
+  for(let x=0;x<=CW;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke();}
+  for(let y=0;y<=CH;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke();}
   drawBricks();
 })();
 </script>
