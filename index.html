@@ -797,7 +797,7 @@ canvas {
       <button class="lb-tab" data-lbmode="blitz">Blitz</button>
       <button class="lb-tab" data-lbmode="survival">Survival</button>
     </div>
-    <div id="lb-rows" style="display:flex;flex-direction:column;gap:6px;min-height:160px;"></div>
+    <div id="lb-rows" style="display:flex;flex-direction:column;gap:6px;min-height:140px;"></div>
     <div class="divider"></div>
     <button class="btn btn-ghost-r" id="btn-clear-scores" style="font-size:12px;">✕ CLEAR ALL SCORES</button>
   </div>
@@ -963,7 +963,7 @@ canvas {
 
     <!-- Top 10 leaderboard inline -->
     <div class="divider"></div>
-    <div class="section-label">Top 10</div>
+    <div class="section-label">Top 7</div>
     <div id="go-lb-rows" style="display:flex;flex-direction:column;gap:5px;"></div>
 
     <div class="divider"></div>
@@ -1012,7 +1012,7 @@ canvas {
     </div>
 
     <div class="divider"></div>
-    <div class="section-label">Top 10</div>
+    <div class="section-label">Top 7</div>
     <div id="win-lb-rows" style="display:flex;flex-direction:column;gap:5px;"></div>
 
     <div class="divider"></div>
@@ -1054,13 +1054,13 @@ function getLB(mode) {
   try { return JSON.parse(localStorage.getItem('sp_lb_'+mode) || '[]'); } catch(e){ return []; }
 }
 function saveLB(mode, arr) {
-  try { localStorage.setItem('sp_lb_'+mode, JSON.stringify(arr.slice(0,10))); } catch(e){}
+  try { localStorage.setItem('sp_lb_'+mode, JSON.stringify(arr.slice(0,7))); } catch(e){}
 }
-// Returns position (0-based) if score qualifies for top 10, else -1
-function qualifiesTop10(mode, score) {
+// Returns position (0-based) if score qualifies for top 7, else -1
+function qualifiesTop7(mode, score) {
   if (score <= 0) return -1;
   const arr = getLB(mode);
-  if (arr.length < 10) return arr.length; // slot available
+  if (arr.length < 7) return arr.length; // slot available
   const worst = arr[arr.length-1].score;
   if (score > worst) return arr.length-1;
   return -1;
@@ -1202,7 +1202,8 @@ let STATE = {
   mode:'classic', diff:'normal', score:0, level:1, lives:3,
   running:false, paused:false, raf:0,
   bricksDestroyed:0, puCaught:0, startTime:0, blitzLeft:BLITZ_SECONDS*1000,
-  pendingScore:null  // { score, level, elapsed } waiting for name input
+  pendingScore:null,  // { score, level, elapsed } waiting for name input
+  levelTransition: false
 };
 
 let PAD, balls, bricks, powerUps, particles, trailPoints;
@@ -1446,6 +1447,7 @@ function initGame() {
   STATE.startTime = performance.now();
   STATE.blitzLeft = BLITZ_SECONDS * 1000;
   STATE.paused = false;
+  STATE.levelTransition = false;
 
   PAD = mkPad();
   bricks = mkBricks();
@@ -1798,8 +1800,8 @@ function updateBalls(dt) {
 }
 
 function ballLost() {
+  STATE.levelTransition = false; // reset in case ball lost mid-transition
   if (STATE.mode === 'survival') {
-    // In survival, no life lost, bricks partially respawn
     SFX.lose();
     respawnSomeBricks();
     spawnBall();
@@ -1842,28 +1844,26 @@ function updateBricks() {
           ball.y+ball.r > b.y && ball.y-ball.r < b.y+BH) {
 
         if (!isGhost) {
-          // Direction
           const ol = (ball.x+ball.r)-b.x, or_ = (b.x+BW)-(ball.x-ball.r);
           const ot = (ball.y+ball.r)-b.y, ob  = (b.y+BH)-(ball.y-ball.r);
           const mh = Math.min(ol,or_), mv = Math.min(ot,ob);
           if (mh < mv) ball.dx *= -1; else ball.dy *= -1;
         }
 
-        if (isFireball) {
-          // Destroy immediately
-          b.hits = 0;
-        }
+        if (isFireball) b.hits = 0;
         hitBrick(b, ball);
         break;
       }
     }
   }
 
-  if (bricks.every(b => !b.alive)) {
+  // FIX: guard against empty array (.every on [] = true) and multiple triggers
+  if (!STATE.levelTransition && bricks.length > 0 && bricks.every(b => !b.alive)) {
+    STATE.levelTransition = true;
     if (STATE.mode === 'classic' && STATE.level >= LEVEL_MAX) {
       setTimeout(winGame, 400);
     } else {
-      setTimeout(levelUp, 300);
+      setTimeout(levelUp, 400);
     }
   }
 }
@@ -2006,6 +2006,7 @@ function showToast(text, color, duration=1000) {
    LEVEL UP / WIN / GAME OVER
 ════════════════════════════════════════════ */
 function levelUp() {
+  STATE.levelTransition = false; // reset guard for next level
   STATE.level++;
   SFX.levelUp();
   spawnLevelParts();
@@ -2035,7 +2036,7 @@ function endGame() {
   document.getElementById('gs-pu').textContent     = STATE.puCaught;
 
   // Check if qualifies for top 10
-  const pos = qualifiesTop10(STATE.mode, STATE.score);
+  const pos = qualifiesTop7(STATE.mode, STATE.score);
   const nameSection = document.getElementById('go-name-section');
   const recEl = document.getElementById('go-record');
   if (pos >= 0) {
@@ -2069,7 +2070,7 @@ function winGame() {
   document.getElementById('ws-time').textContent   = mm+':'+ss;
   document.getElementById('ws-pu').textContent     = STATE.puCaught;
 
-  const pos = qualifiesTop10(STATE.mode, STATE.score);
+  const pos = qualifiesTop7(STATE.mode, STATE.score);
   const nameSection = document.getElementById('win-name-section');
   const recEl = document.getElementById('win-record');
   if (pos >= 0) {
@@ -2095,7 +2096,7 @@ function renderResultLB(containerId, mode) {
     el.innerHTML = '<div style="text-align:center;color:var(--text2);font-size:11px;padding:16px 0;">No scores yet — be the first!</div>';
     return;
   }
-  const medals = ['🥇','🥈','🥉','4','5','6','7','8','9','10'];
+  const medals = ['🥇','🥈','🥉','④','⑤','⑥','⑦'];
   arr.forEach((s, i) => {
     const mm = String(Math.floor((s.time||0)/60)).padStart(2,'0');
     const ss = String((s.time||0)%60).padStart(2,'0');
@@ -2324,7 +2325,7 @@ function renderLB(mode) {
     rows.innerHTML = '<div style="text-align:center;color:var(--text2);font-size:12px;padding:40px 0;">No scores yet.<br>Play a game first!</div>';
     return;
   }
-  const medals = ['🥇','🥈','🥉','4','5','6','7','8','9','10'];
+  const medals = ['🥇','🥈','🥉','④','⑤','⑥','⑦'];
   arr.forEach((s,i) => {
     const row = document.createElement('div');
     row.className = 'score-row';
